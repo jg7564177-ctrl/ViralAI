@@ -1,0 +1,17 @@
+{
+  "name": "ViralAI",
+  "short_name": "ViralAI",
+  "description": "Studio IA pour créer, analyser et préparer des concepts vidéo premium.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090b16",
+  "theme_color": "#090b16",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/static/Octocat.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ]
+}

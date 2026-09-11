@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: viralai
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.1
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AI_PROVIDER
+        value: local
+      - key: VIDEO_PROVIDER
+        value: disabled
+      - key: ALLOW_PAID_VIDEO
+        value: false
+      - key: PAYMENT_PROVIDER
+        value: not_configured

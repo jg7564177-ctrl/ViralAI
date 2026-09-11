@@ -1,0 +1,1 @@
+ViralAI est un studio de création vidéo assisté par IA pour préparer des idées, concepts, scripts et projets orientés viral sur mobile et web. L’IA, les comptes et les crédits restent côté serveur, sans paiement réel activé par défaut.

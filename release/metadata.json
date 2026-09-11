@@ -1,0 +1,12 @@
+{
+  "app_name": "ViralAI",
+  "package_name": "com.viralai.app",
+  "version": "1.0.0",
+  "build_number": 1,
+  "android_orientation": "portrait",
+  "permissions": ["INTERNET"],
+  "https_required": true,
+  "payment_enabled": false,
+  "video_generation_enabled": false,
+  "release_notes": "Initial mobile web wrapper release for ViralAI. Backend remains server-side for AI, credits, chat and projects."
+}

@@ -1,19 +1,495 @@
-<head>
-    <title>{{ title }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="ViralAI est un studio IA pour créer, préparer et analyser du contenu vidéo moderne." />
+        <meta name="theme-color" content="#090b16" />
+        <meta property="og:title" content="ViralAI" />
+        <meta property="og:description" content="Ton studio IA pour créer du contenu vidéo." />
+        <meta property="og:type" content="website" />
+        <title>{{ title }}</title>
+        <link rel="icon" href="{{ url_for('static', filename='Octocat.png') }}" type="image/png" />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}" />
+    </head>
+    <body>
+        <div class="ambient ambient-one"></div>
+        <div class="ambient ambient-two"></div>
 
-<body>
-    <div class="App">
-        <header class="App-header">
-            <img src="{{ url_for('static', filename='Octocat.png') }}" class="App-logo" alt="logo" />
-            <p>
-                GitHub Codespaces <span class="heart">♥️</span> Flask
-            </p>
-            <p class="small">
-                Edit <code>templates/index.html</code> and refresh to see your changes!
-            </p>
-        </header>
-    </div>
-</body>
+        <div id="splash-screen" class="splash-screen" aria-live="polite">
+            <div class="splash-core">
+                <div class="brand-mark pulse-ring">V</div>
+                <div class="splash-text">
+                    <span>ViralAI</span>
+                    <small>studio créatif IA</small>
+                </div>
+            </div>
+        </div>
 
+        <div class="app-shell">
+            <aside class="sidebar glass-panel">
+                <div class="brand-block">
+                    <div class="brand-mark">V</div>
+                    <div>
+                        <p class="eyebrow">studio IA</p>
+                        <h1>ViralAI</h1>
+                    </div>
+                </div>
+
+                <nav class="main-nav" aria-label="Navigation principale">
+                    <button class="nav-item active">🏠 Accueil</button>
+                    <button class="nav-item">💬 Chat IA</button>
+                    <button class="nav-item">🎬 Générateur</button>
+                    <button class="nav-item">📊 Analyse</button>
+                    <button class="nav-item">📁 Projets</button>
+                    <button class="nav-item">📈 Statistiques</button>
+                    <button class="nav-item">⚙️ Paramètres</button>
+                </nav>
+
+                <div class="conversation-panel">
+                    <div class="conversation-panel-header">
+                        <p class="eyebrow">Conversations</p>
+                        <button id="new-conversation-btn" class="secondary-button small-button" type="button">+ Nouvelle</button>
+                    </div>
+                    <div id="conversation-list" class="conversation-list" aria-live="polite"></div>
+                </div>
+
+                <div class="sidebar-card">
+                    <p class="eyebrow">Système</p>
+                    <strong>Production légère</strong>
+                    <span>Modèles lourds côté serveur</span>
+                </div>
+            </aside>
+
+            <main class="main-panel">
+                <header class="topbar glass-panel">
+                    <div>
+                        <p class="eyebrow">Bienvenue</p>
+                        <h2>Qu'est-ce qu'on crée aujourd'hui ?</h2>
+                    </div>
+                    <button class="primary-button pulse-button">✨ Nouveau projet</button>
+                </header>
+
+                <section class="hero-card glass-panel">
+                    <div class="hero-copy">
+                        <span class="pill">IA créative</span>
+                        <h3>Crée, analyse et améliore tes vidéos avec un studio pensé pour les créateurs.</h3>
+                    </div>
+                    <div class="hero-metrics">
+                        <div class="metric-card">
+                            <strong>4.8x</strong>
+                            <span>Rétention</span>
+                        </div>
+                        <div class="metric-card">
+                            <strong>12</strong>
+                            <span>Projets</span>
+                        </div>
+                        <div class="metric-card">
+                            <strong>89%</strong>
+                            <span>Amélioration</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="quick-actions" aria-label="Actions rapides">
+                    <button class="action-card accent" type="button" data-section="create-screen">🎬 Créer une vidéo</button>
+                    <button class="action-card" type="button">🤖 Analyser une vidéo</button>
+                    <button class="action-card" type="button">🔥 Améliorer une vidéo</button>
+                    <button class="action-card" type="button">💃 Créer une vidéo de danse</button>
+                    <button class="action-card" type="button">🎮 Créer une vidéo gaming</button>
+                    <button class="action-card" type="button">🎨 Créer une scène 3D</button>
+                    <button class="action-card" type="button">✨ Idée virale</button>
+                </section>
+
+                <section id="create-screen" class="create-screen glass-panel">
+                    <div class="panel-header create-header">
+                        <div>
+                            <p class="eyebrow">Créer</p>
+                            <h3>Créer une vidéo</h3>
+                        </div>
+                        <span class="status-dot soft">Préparation</span>
+                    </div>
+
+                    <div class="create-grid">
+                        <div class="create-main">
+                            <label class="prompt-field">
+                                <span>Décris la vidéo que tu veux créer…</span>
+                                <textarea id="create-prompt" maxlength="500" placeholder="Un personnage futuriste marche dans une ville cyberpunk sous la pluie, caméra cinématique, éclairages néon…"></textarea>
+                            </label>
+
+                            <div class="prompt-toolbar">
+                                <span id="prompt-counter">0 / 500</span>
+                                <div class="toolbar-actions">
+                                    <button type="button" class="secondary-button small-button" id="clear-prompt-btn">Effacer</button>
+                                    <button type="button" class="secondary-button small-button" id="improve-prompt-btn">Améliorer le prompt</button>
+                                    <button type="button" class="primary-button small-button" id="generate-btn">Générer</button>
+                                </div>
+                            </div>
+
+                            <div class="info-banner">Génération bientôt disponible</div>
+
+                            <div class="panel-block">
+                                <div class="panel-header compact-header">
+                                    <h4>Paramètres vidéo</h4>
+                                </div>
+
+                                <div class="control-grid">
+                                    <label>
+                                        <span>Format</span>
+                                        <select id="video-format">
+                                            <option value="9:16">9:16 — TikTok / Shorts</option>
+                                            <option value="16:9">16:9 — YouTube</option>
+                                            <option value="1:1">1:1 — Carré</option>
+                                        </select>
+                                    </label>
+
+                                    <label>
+                                        <span>Durée</span>
+                                        <select id="video-duration">
+                                            <option value="5">5 secondes</option>
+                                            <option value="10" selected>10 secondes</option>
+                                            <option value="15">15 secondes</option>
+                                            <option value="30">30 secondes</option>
+                                            <option value="custom">Personnalisée</option>
+                                        </select>
+                                    </label>
+
+                                    <label>
+                                        <span>Style</span>
+                                        <select id="video-style">
+                                            <option value="realistic">Réaliste</option>
+                                            <option value="cinematic">Cinématique</option>
+                                            <option value="anime">Anime</option>
+                                            <option value="3d">3D</option>
+                                            <option value="gaming">Gaming</option>
+                                            <option value="cartoon">Cartoon</option>
+                                            <option value="cyberpunk">Cyberpunk</option>
+                                            <option value="story">Story</option>
+                                            <option value="dance">Dance</option>
+                                        </select>
+                                    </label>
+
+                                    <label>
+                                        <span>Qualité</span>
+                                        <select id="video-quality">
+                                            <option value="standard">Standard</option>
+                                            <option value="high">Haute</option>
+                                            <option value="ultra">Ultra</option>
+                                        </select>
+                                    </label>
+                                </div>
+
+                                <div class="callout small">Disponible lorsque le moteur vidéo sera activé.</div>
+                            </div>
+
+                            <div class="panel-block">
+                                <button type="button" class="advanced-toggle" id="advanced-toggle">Options avancées</button>
+                                <div id="advanced-panel" class="advanced-panel hidden">
+                                    <div class="control-grid advanced-grid">
+                                        <label><span>Caméra</span><input type="text" value="tracking shot" /></label>
+                                        <label><span>Mouvement de caméra</span><input type="text" value="dolly in" /></label>
+                                        <label><span>Éclairage</span><input type="text" value="néon et contrastes" /></label>
+                                        <label><span>Ambiance</span><input type="text" value="cinématique" /></label>
+                                        <label><span>Angle de vue</span><input type="text" value="low angle" /></label>
+                                        <label><span>FPS</span><input type="text" value="24" /></label>
+                                        <label><span>Résolution</span><input type="text" value="1080p" /></label>
+                                        <label><span>Seed</span><input type="text" value="" /></label>
+                                        <label class="full-width"><span>Negative prompt</span><input type="text" value="flou, artefacts, mauvais éclairage" /></label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="panel-block">
+                                <div class="panel-header compact-header">
+                                    <h4>Workflow IA</h4>
+                                </div>
+                                <div class="workflow-steps">
+                                    <div class="workflow-step active"><span>Prompt</span><small>En attente</small></div>
+                                    <div class="workflow-step"><span>Analyse IA</span><small>En attente</small></div>
+                                    <div class="workflow-step"><span>Storyboard</span><small>En attente</small></div>
+                                    <div class="workflow-step"><span>Scènes</span><small>En attente</small></div>
+                                    <div class="workflow-step"><span>Génération</span><small>En attente</small></div>
+                                    <div class="workflow-step"><span>Rendu</span><small>En attente</small></div>
+                                    <div class="workflow-step"><span>Vidéo finale</span><small>En attente</small></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <aside class="create-side">
+                            <div class="mini-panel">
+                                <div class="panel-header compact-header">
+                                    <h4>Storyboard</h4>
+                                </div>
+                                <div class="storyboard-list" id="storyboard-list">
+                                    <article class="story-card">
+                                        <div class="story-card-header"><strong>Scène 1</strong></div>
+                                        <p>Entrée dans la ville futuriste, lumière néon.</p>
+                                        <ul>
+                                            <li><span>Durée</span><strong>5s</strong></li>
+                                            <li><span>Caméra</span><strong>tracking</strong></li>
+                                            <li><span>Transition</span><strong>fade</strong></li>
+                                        </ul>
+                                    </article>
+                                    <article class="story-card">
+                                        <div class="story-card-header"><strong>Scène 2</strong></div>
+                                        <p>Le personnage se déplace sous la pluie.</p>
+                                        <ul>
+                                            <li><span>Durée</span><strong>5s</strong></li>
+                                            <li><span>Caméra</span><strong>dolly in</strong></li>
+                                            <li><span>Transition</span><strong>cut</strong></li>
+                                        </ul>
+                                    </article>
+                                    <article class="story-card">
+                                        <div class="story-card-header"><strong>Scène 3</strong></div>
+                                        <p>Le plan larges révèle la ville et les néons.</p>
+                                        <ul>
+                                            <li><span>Durée</span><strong>4s</strong></li>
+                                            <li><span>Caméra</span><strong>crane</strong></li>
+                                            <li><span>Transition</span><strong>match cut</strong></li>
+                                        </ul>
+                                    </article>
+                                    <article class="story-card">
+                                        <div class="story-card-header"><strong>Scène 4</strong></div>
+                                        <p>Fin sur une scène d’impact visuel avec zoom final.</p>
+                                        <ul>
+                                            <li><span>Durée</span><strong>4s</strong></li>
+                                            <li><span>Caméra</span><strong>zoom</strong></li>
+                                            <li><span>Transition</span><strong>fade out</strong></li>
+                                        </ul>
+                                    </article>
+                                </div>
+                                <button type="button" class="secondary-button full-width" id="add-scene-btn">+ Ajouter une scène</button>
+                            </div>
+
+                            <div class="mini-panel credits-panel">
+                                <div class="panel-header compact-header">
+                                    <h4>Crédits</h4>
+                                </div>
+                                <div class="credits-row">
+                                    <strong id="available-credits">5</strong>
+                                    <span>crédits disponibles</span>
+                                </div>
+                                <p class="credits-note">Coût estimé : bientôt disponible</p>
+                            </div>
+                        </aside>
+                    </div>
+                </section>
+
+                <section class="content-grid">
+                    <div class="panel glass-panel chat-panel">
+                        <div class="panel-header">
+                            <div class="panel-title-group">
+                                <h3>Chat IA</h3>
+                                <span class="signal-dot"><span></span></span>
+                            </div>
+                            <div class="chat-panel-actions">
+                                <button id="stop-generation-btn" class="secondary-button small-button" type="button">Arrêter</button>
+                                <span class="status-dot">En ligne</span>
+                            </div>
+                        </div>
+
+                        <div class="quick-suggestions" aria-label="Suggestions rapides">
+                            <button type="button" class="preset-chip" data-message="Donne-moi une idée de vidéo">💡 Donne-moi une idée de vidéo</button>
+                            <button type="button" class="preset-chip" data-message="Crée un prompt vidéo">🎬 Crée un prompt vidéo</button>
+                            <button type="button" class="preset-chip" data-message="Rends cette idée plus virale">🚀 Rends cette idée plus virale</button>
+                            <button type="button" class="preset-chip" data-message="Transforme cette idée en histoire">🎭 Transforme cette idée en histoire</button>
+                            <button type="button" class="preset-chip" data-message="Crée une vidéo gaming">🎮 Crée une vidéo gaming</button>
+                            <button type="button" class="preset-chip" data-message="Crée une idée humoristique">😂 Crée une idée humoristique</button>
+                        </div>
+
+                        <div class="chat-box" id="chat-box" aria-live="polite"></div>
+
+                        <div class="assistant-thinking hidden" id="assistant-thinking" aria-live="polite">
+                            <span></span><span></span><span></span>
+                            <strong>IA en train de réfléchir…</strong>
+                        </div>
+
+                        <form class="chat-form" id="chat-form">
+                            <input id="chat-input" type="text" placeholder="Écris une demande à l’IA..." autocomplete="off" />
+                            <button type="submit" class="primary-button send-button">Envoyer</button>
+                        </form>
+                    </div>
+
+                    <div class="panel glass-panel">
+                        <div class="panel-header">
+                            <h3>Générateur vidéo</h3>
+                            <span class="status-dot soft" id="generator-state">🎬 Générateur vidéo prêt</span>
+                        </div>
+
+                        <div class="config-callout" id="generator-config">
+                            <strong>Le moteur vidéo doit être configuré pour lancer une génération réelle.</strong>
+                            <div style="margin-top: 8px; color: var(--muted);">Ajoute VIDEO_PROVIDER_API_KEY et VIDEO_PROVIDER_MODEL dans le fichier .env à la racine du projet.</div>
+                            <button type="button" class="secondary-button small-button" id="config-button">Configuration</button>
+                        </div>
+
+                        <div class="prompt-presets" aria-label="Prompts d’exemple">
+                            <button type="button" class="preset-chip" data-prompt="Une voiture futuriste roule dans une ville cyberpunk sous la pluie.">Ville cyberpunk</button>
+                            <button type="button" class="preset-chip" data-prompt="Un drone survole une montagne au lever du soleil sur fond de nuages.">Drone du matin</button>
+                            <button type="button" class="preset-chip" data-prompt="Un personnage court dans une rue futuriste avec des néons et du mouvement rapide.">Course néon</button>
+                            <button type="button" class="preset-chip" data-prompt="Un produit premium apparaît dans une scène 3D ultra propre et minimaliste.">Produit premium</button>
+                        </div>
+
+                        <form id="scenario-form" class="generator-form">
+                            <label>
+                                Description
+                                <textarea id="description" rows="3">Une voiture futuriste roule dans une ville cyberpunk sous la pluie.</textarea>
+                            </label>
+                            <div class="form-row two-cols">
+                                <label>
+                                    Durée (s)
+                                    <input id="duration" type="number" value="10" min="5" max="20" />
+                                </label>
+                                <label>
+                                    Format
+                                    <select id="format">
+                                        <option>9:16</option>
+                                        <option>16:9</option>
+                                        <option>1:1</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="form-row two-cols">
+                                <label>
+                                    Style
+                                    <input id="style" type="text" value="cyberpunk" />
+                                </label>
+                                <label>
+                                    Caméra
+                                    <select id="camera">
+                                        <option>tracking shot</option>
+                                        <option>slow dolly</option>
+                                        <option>drone</option>
+                                        <option>wide angle</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="form-row two-cols">
+                                <label>
+                                    Voix
+                                    <input id="voice" type="text" value="voix claire et dynamique" />
+                                </label>
+                                <label>
+                                    Qualité
+                                    <select id="quality">
+                                        <option>HD</option>
+                                        <option>4K</option>
+                                        <option>Pro</option>
+                                    </select>
+                                </label>
+                            </div>
+                            <div class="checkbox-row">
+                                <label><input id="subtitles" type="checkbox" checked /> Sous-titres</label>
+                            </div>
+                            <button type="submit" class="primary-button full-width generate-button">Générer la vidéo</button>
+                        </form>
+
+                        <div id="generation-progress" class="generation-progress hidden" aria-live="polite">
+                            <div class="progress-header">
+                                <span>Production</span>
+                                <strong id="progress-label">🧠 Préparation de ton idée...</strong>
+                            </div>
+                            <div class="progress-bar">
+                                <span id="progress-fill"></span>
+                            </div>
+                            <ul class="progress-steps">
+                                <li class="active">🧠 Préparation de ton idée...</li>
+                                <li>🎬 Génération des scènes...</li>
+                                <li>✨ Assemblage...</li>
+                                <li>✅ Vidéo terminée</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="content-grid lower-grid">
+                    <div class="panel glass-panel">
+                        <div class="panel-header">
+                            <h3>Mes crédits</h3>
+                            <span class="status-dot" id="credit-balance">5 crédits</span>
+                        </div>
+                        <div id="credit-panel" class="analysis-result">
+                            <h4>Compte utilisateur</h4>
+                            <p><strong>Solde :</strong> 5 crédits gratuits</p>
+                            <p><strong>Rôle :</strong> USER</p>
+                            <p><strong>Paiements :</strong> désactivés pour le moment.</p>
+                            <button type="button" class="secondary-button" id="buy-credits" disabled>Acheter des crédits</button>
+                        </div>
+                    </div>
+
+                    <div class="panel glass-panel">
+                        <div class="panel-header">
+                            <h3>Mes projets</h3>
+                        </div>
+                        <div id="projects-list" class="project-list">
+                            <div class="project-card">
+                                <strong>Dance city concept</strong>
+                                <span>Danse</span>
+                                <em>Terminé</em>
+                            </div>
+                            <div class="project-card">
+                                <strong>Gaming hook test</strong>
+                                <span>Gaming</span>
+                                <em>Analyse</em>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="content-grid lower-grid">
+                    <div class="panel glass-panel">
+                        <div class="panel-header">
+                            <h3>Historique des crédits</h3>
+                        </div>
+                        <div id="credit-history" class="analysis-result">
+                            <p>Aucun mouvement sur le compte pour l’instant.</p>
+                        </div>
+                    </div>
+
+                    <div class="panel glass-panel">
+                        <div class="panel-header">
+                            <h3>Suivi</h3>
+                        </div>
+                        <div class="analysis-result">
+                            <p>Les performances du compte sont affichées selon vos besoins utilisateur.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="stats-panel glass-panel">
+                    <div class="panel-header">
+                        <h3>Statistiques</h3>
+                        <span class="status-dot soft">7 jours</span>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <span>Vues</span>
+                            <strong>18.4k</strong>
+                            <div class="bar-line"><i style="width:72%"></i></div>
+                        </div>
+                        <div class="stat-card">
+                            <span>Likes</span>
+                            <strong>3.2k</strong>
+                            <div class="bar-line"><i style="width:64%"></i></div>
+                        </div>
+                        <div class="stat-card">
+                            <span>Commentaires</span>
+                            <strong>540</strong>
+                            <div class="bar-line"><i style="width:58%"></i></div>
+                        </div>
+                        <div class="stat-card">
+                            <span>Partages</span>
+                            <strong>890</strong>
+                            <div class="bar-line"><i style="width:80%"></i></div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <script src="{{ url_for('static', filename='main.js') }}"></script>
+    </body>
 </html>
