@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ViralAI Studio</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --bg:#0a0a12; --bg2:#12121e; --bg3:#1a1a2e; --border:#2a2a3e;
+  --text:#e8e8f0; --muted:#8a8aa0; --accent:#a855f7; --accent2:#ec4899;
+  --success:#22c55e; --danger:#ef4444; --warn:#f59e0b;
+}
+body {
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg); color:var(--text); min-height:100vh;
+  display:flex; flex-direction:column; overflow-x:hidden;
+}
+.header {
+  background:linear-gradient(135deg,#1a1a2e,#12121e);
+  border-bottom:1px solid var(--border);
+  padding:14px 16px; display:flex; align-items:center; gap:12px;
+  position:sticky; top:0; z-index:100;
+}
+.logo {
+  width:36px; height:36px; border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex; align-items:center; justify-content:center;
+  font-weight:800; font-size:16px; color:#fff;
+}
+.header h1 { font-size:17px; font-weight:700; }
+.header .sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.tabs {
+  display:flex; background:var(--bg2); padding:6px; gap:4px;
+  margin:12px 16px 0; border-radius:12px; border:1px solid var(--border);
+}
+.tab {
+  flex:1; padding:10px 8px; border:none; background:transparent;
+  color:var(--muted); font-size:13px; font-weight:600; border-radius:8px;
+  cursor:pointer; transition:all .2s;
+}
+.tab.active {
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;
+}
+.content { flex:1; display:flex; flex-direction:column; padding:16px; }
+.panel { display:none; flex-direction:column; gap:12px; }
+.panel.active { display:flex; }
+.chat-scroll {
+  flex:1; overflow-y:auto; padding:8px 0; display:flex;
+  flex-direction:column; gap:14px; min-height:0;
+}
+.msg { display:flex; gap:10px; align-items:flex-start; max-width:100%; }
+.msg.user { flex-direction:row-reverse; }
+.avatar {
+  width:32px; height:32px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700;
+}
+.msg.bot .avatar {
+  background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff;
+}
+.msg.user .avatar { background:var(--bg3); color:var(--muted); }
+.bubble {
+  padding:10px 14px; border-radius:16px; font-size:14px;
+  line-height:1.5; max-width:calc(100% - 50px); word-wrap:break-word;
+  white-space:pre-wrap;
+}
+.msg.bot .bubble { background:var(--bg2); border:1px solid var(--border); }
+.msg.user .bubble {
+  background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff;
+}
+.input-bar {
+  display:flex; gap:8px; padding:12px 0 0; border-top:1px solid var(--border);
+  margin-top:12px;
+}
+.input-bar textarea {
+  flex:1; background:var(--bg2); border:1px solid var(--border);
+  border-radius:14px; color:var(--text); font-size:14px;
+  padding:12px 14px; resize:none; font-family:inherit;
+  max-height:120px; min-height:44px;
+}
+.input-bar textarea:focus { outline:none; border-color:var(--accent); }
+.send-btn {
+  width:44px; height:44px; border:none; border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff; font-size:18px; cursor:pointer; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.send-btn:disabled { opacity:.5; }
+.field { display:flex; flex-direction:column; gap:6px; }
+.field label { font-size:12px; color:var(--muted); font-weight:600; }
+.field textarea, .field input, .field select {
+  background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+  color:var(--text); font-size:14px; padding:12px 14px;
+  font-family:inherit; width:100%;
+}
+.field textarea { resize:none; min-height:80px; }
+.field textarea:focus, .field input:focus, .field select:focus {
+  outline:none; border-color:var(--accent);
+}
+.row { display:flex; gap:10px; }
+.row > * { flex:1; }
+.btn-primary {
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none; color:#fff; padding:14px; border-radius:14px;
+  font-size:14px; font-weight:700; cursor:pointer; width:100%;
+  margin-top:4px;
+}
+.btn-primary:disabled { opacity:.5; }
+.progress-box {
+  background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+  padding:12px; display:none;
+}
+.progress-box.active { display:block; }
+.progress-bar {
+  height:6px; background:var(--bg3); border-radius:3px;
+  overflow:hidden; margin-top:8px;
+}
+.progress-fill {
+  height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2));
+  width:0%; transition:width .5s;
+}
+.progress-text { font-size:12px; color:var(--muted); margin-top:6px; }
+.video-box {
+  background:#000; border-radius:14px; overflow:hidden;
+  aspect-ratio:9/16; max-height:60vh; display:none;
+  align-items:center; justify-content:center;
+}
+.video-box.active { display:flex; }
+.video-box video { width:100%; height:100%; object-fit:contain; }
+.empty {
+  text-align:center; color:var(--muted); padding:30px 20px;
+  font-size:13px;
+}
+.toast {
+  position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+  background:var(--bg3); border:1px solid var(--border);
+  padding:12px 20px; border-radius:12px; font-size:13px;
+  z-index:1000; opacity:0; transition:opacity .3s;
+  max-width:90%; text-align:center;
+}
+.toast.show { opacity:1; }
+.toast.error { border-color:var(--danger); color:#fecaca; }
+.toast.success { border-color:var(--success); color:#bbf7d0; }
+.spinner {
+  display:inline-block; width:14px; height:14px;
+  border:2px solid var(--muted); border-top-color:var(--accent);
+  border-radius:50%; animation:spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">V</div>
+  <div>
+    <h1>ViralAI Studio</h1>
+    <div class="sub">Crée · Analyse · Améliore</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="chat">💬 Chat</button>
+  <button class="tab" data-tab="video">🎬 Vidéo</button>
+  <button class="tab" data-tab="analyze">📊 Analyse</button>
+</div>
+
+<div class="content">
+
+  <div class="panel active" id="panel-chat">
+    <div class="chat-scroll" id="chatScroll">
+      <div class="msg bot">
+        <div class="avatar">V</div>
+        <div class="bubble">Salut ! Je suis ViralAI, ton assistant créatif. Demande-moi une idée de vidéo, un script, un prompt, ou pose-moi n'importe quelle question. 🚀</div>
+      </div>
+    </div>
+    <div class="input-bar">
+      <textarea id="chatInput" placeholder="Écris ton message..." rows="1"></textarea>
+      <button class="send-btn" id="chatSend">➤</button>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-video">
+    <div class="field">
+      <label>Décris la vidéo que tu veux</label>
+      <textarea id="vidPrompt" placeholder="Ex: Un dragon volant au-dessus d'une ville futuriste la nuit"></textarea>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Durée</label>
+        <select id="vidDuration">
+          <option value="5">5 s</option>
+          <option value="10">10 s</option>
+          <option value="15" selected>15 s</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Format</label>
+        <select id="vidFormat">
+          <option value="9:16">9:16 TikTok</option>
+          <option value="16:9">16:9 YouTube</option>
+          <option value="1:1">1:1 Carré</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-primary" id="vidGenerate">🎬 Générer la vidéo</button>
+    <div class="progress-box" id="vidProgress">
+      <div style="display:flex; justify-content:space-between; font-size:13px;">
+        <span>Génération en cours...</span>
+        <span id="vidPct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="vidFill"></div></div>
+      <div class="progress-text" id="vidStatus">Envoi de la demande...</div>
+    </div>
+    <div class="video-box" id="vidBox">
+      <video id="vidPlayer" controls playsinline></video>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-analyze">
+    <div class="field">
+      <label>URL de la vidéo à analyser (MP4)</label>
+      <input type="url" id="anaUrl" placeholder="https://exemple.com/video.mp4">
+    </div>
+    <button class="btn-primary" id="anaBtn">📊 Analyser</button>
+    <div class="empty" id="anaResult">Colle une URL vidéo pour obtenir une analyse IA.</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    $('panel-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+function toast(msg, type='') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast ' + type, 3500);
+}
+
+function addMsg(text, role='bot') {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = '<div class="avatar">' + (role === 'user' ? '👤' : 'V') + '</div>' +
+    '<div class="bubble"></div>';
+  div.querySelector('.bubble').textContent = text;
+  $('chatScroll').appendChild(div);
+  $('chatScroll').scrollTop = $('chatScroll').scrollHeight;
+  return div;
+}
+
+const chatInput = $('chatInput');
+chatInput.addEventListener('input', () => {
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+});
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+$('chatSend').addEventListener('click', sendChat);
+
+async function sendChat() {
+  const msg = chatInput.value.trim();
+  if (!msg) return;
+  chatInput.value = '';
+  chatInput.style.height = 'auto';
+  addMsg(msg, 'user');
+  const loading = addMsg('...', 'bot');
+  loading.querySelector('.bubble').innerHTML = '<span class="spinner"></span> Réflexion...';
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg })
+    });
+    const data = await r.json();
+    const reply = data.response || data.message || data.reply || 'Pas de réponse';
+    loading.querySelector('.bubble').textContent = reply;
+  } catch (err) {
+    loading.querySelector('.bubble').textContent = 'Erreur de connexion : ' + err.message;
+  }
+}
+
+$('vidGenerate').addEventListener('click', async () => {
+  const prompt = $('vidPrompt').value.trim();
+  if (!prompt) { toast('Écris un prompt d\'abord', 'error'); return; }
+  $('vidGenerate').disabled = true;
+  $('vidProgress').classList.add('active');
+  $('vidBox').classList.remove('active');
+  $('vidFill').style.width = '0%';
+  $('vidPct').textContent = '0%';
+  $('vidStatus').textContent = 'Envoi de la demande au fournisseur...';
+
+  try {
+    const r = await fetch('/api/video/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        description: prompt,
+        duration: parseInt($('vidDuration').value),
+        format: $('vidFormat').value,
+        style: 'cinematic'
+      })
+    });
+    const data = await r.json();
+    if (!data.job_id) throw new Error(data.message || 'Pas de job_id');
+    const jobId = data.job_id;
+    $('vidStatus').textContent = 'Tâche créée. En attente du fournisseur...';
+    pollJob(jobId);
+  } catch (err) {
+    $('vidStatus').textContent = '❌ Erreur : ' + err.message;
+    $('vidGenerate').disabled = false;
+    toast('Erreur de génération', 'error');
+  }
+});
+
+async function pollJob(jobId) {
+  try {
+    const r = await fetch('/api/video/jobs/' + jobId);
+    const data = await r.json();
+    const pct = data.progress || 0;
+    $('vidFill').style.width = pct + '%';
+    $('vidPct').textContent = pct + '%';
+    const url = data.render_url || data.output_url;
+
+    if (data.status === 'COMPLETED' && url) {
+      $('vidStatus').textContent = '✅ Vidéo prête !';
+      $('vidPlayer').src = url;
+      $('vidBox').classList.add('active');
+      $('vidGenerate').disabled = false;
+      toast('Vidéo générée !', 'success');
+      return;
+    }
+    if (data.status === 'FAILED') {
+      $('vidStatus').textContent = '❌ ' + (data.message || 'Échec');
+      $('vidGenerate').disabled = false;
+      toast('Échec de génération', 'error');
+      return;
+    }
+    $('vidStatus').textContent = (data.message || 'Génération en cours...') + ' (' + pct + '%)';
+    setTimeout(() => pollJob(jobId), 5000);
+  } catch (err) {
+    $('vidStatus').textContent = 'Erreur de suivi : ' + err.message;
+    $('vidGenerate').disabled = false;
+  }
+}
+
+$('anaBtn').addEventListener('click', async () => {
+  const url = $('anaUrl').value.trim();
+  if (!url) { toast('Colle une URL', 'error'); return; }
+  $('anaResult').textContent = 'Analyse en cours...';
+  try {
+    const r = await fetch('/api/analyze-video', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await r.json();
+    $('anaResult').textContent = JSON.stringify(data, null, 2);
+  } catch (err) {
+    $('anaResult').textContent = 'Erreur : ' + err.message;
+  }
+});
+</script>
+</body>
+</html>
