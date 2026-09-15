@@ -1,0 +1,20 @@
+modules = ["python-3.11"]
+run = "gunicorn app:app --bind 0.0.0.0:5000 --timeout 120"
+
+[nix]
+channel = "stable-24_05"
+
+[[ports]]
+localPort = 5000
+externalPort = 5000
+
+[[ports]]
+localPort = 8080
+externalPort = 80
+
+[[ports]]
+localPort = 19986
+externalPort = 3000
+
+[deployment]
+deploymentTarget = "cloudrun"
