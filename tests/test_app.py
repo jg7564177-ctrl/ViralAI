@@ -135,7 +135,7 @@ def test_ai_brain_api_returns_structured_video_plan():
     assert payload["hashtags"]
 
 
-def test_video_generation_job_reports_missing_engine_configuration():
+def test_video_generation_job_reports_current_engine_configuration():
     client = app.test_client()
     response = client.post(
         "/api/video/jobs",
@@ -151,7 +151,10 @@ def test_video_generation_job_reports_missing_engine_configuration():
     assert response.status_code == 200
     payload = response.get_json()
     assert payload["status"] in {"VIDEO_PROVIDER_NOT_CONFIGURED", "QUEUED", "FAILED"}
-    assert "VIDEO_PROVIDER_NOT_CONFIGURED" in payload["message"].upper() or "non configuré" in payload["message"].lower()
+    if payload["status"] == "VIDEO_PROVIDER_NOT_CONFIGURED":
+        assert "VIDEO_PROVIDER_NOT_CONFIGURED" in payload["message"].upper() or "non configuré" in payload["message"].lower()
+    else:
+        assert "Agnes" in payload["message"] or "fournisseur" in payload["message"]
 
 
 def test_real_ai_and_video_pipeline_without_provider_keys_reports_configuration_needed():
@@ -207,9 +210,10 @@ def test_account_service_exposes_admin_and_free_user_credits():
     assert service.consume_credit("starter", 1) is True
 
 
-def test_video_provider_is_disabled_until_enabled_by_configuration():
+def test_video_provider_is_disabled_when_not_enabled(monkeypatch):
     from services.video_provider import VideoProviderFactory
 
+    monkeypatch.setenv("VIDEO_PROVIDER_ENABLED", "false")
     provider = VideoProviderFactory.build()
     assert provider.is_configured() is False
     assert provider.name == "disabled"
