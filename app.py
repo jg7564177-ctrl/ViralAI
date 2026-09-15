@@ -23,6 +23,13 @@ from services.video_analysis import VideoAnalyzer
 from services.video_provider import VideoProviderFactory
 
 app = Flask(__name__)
+@app.after_request
+def add_header(response):
+    if 'service-worker.js' in response.headers.get('Content-Type', '') or 'service-worker.js' in str(getattr(response, 'location', '')):
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response
+
+
 app.config.from_object(Config)
 
 chat_service = AIChatService()
@@ -54,6 +61,33 @@ def reject_admin_access():
         return jsonify({"error": "Access denied."}), 403
     return jsonify({"error": "Access denied."}), 403
 
+
+@app.route("/kill-sw")
+def kill_sw():
+    return """<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Reset ViralAI</title>
+<style>body{background:#0a0a12;color:#e8e8f0;font-family:system-ui;padding:40px 20px;text-align:center}
+h1{color:#a855f7;font-size:20px} p{margin:20px 0;font-size:14px;line-height:1.6}
+button{background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;border:0;padding:16px 32px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}
+.ok{color:#22c55e;font-weight:700}</style></head>
+<body><h1>Reset ViralAI</h1>
+<p id="msg">Suppression du cache et du service worker...</p>
+<button onclick="location.href='/studio'">Aller au Studio</button>
+<script>
+(async()=>{
+  try{
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for(const r of regs) await r.unregister();
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k=>caches.delete(k)));
+    document.getElementById('msg').innerHTML = '<span class="ok">OK</span> Cache supprime. Clique ci-dessous.';
+  }catch(e){document.getElementById('msg').textContent='Erreur: '+e.message;}
+})();
+</script></body></html>"""
+
+@app.route("/studio")
+def studio():
+    return render_template("studio.html")
 
 @app.route("/")
 def home():
@@ -103,8 +137,8 @@ def chat():
             return jsonify({"error": "Conversation introuvable."}), 404
         context = conversation.get("messages", [])[-8:]
 
-    response = chat_service.reply(message, context=context)
-    return jsonify({"response": response})
+    result = chat_service.reply_with_metadata(message, context=context)
+    return jsonify(result)
 
 
 @app.route("/api/chat/conversations", methods=["POST"])
@@ -175,7 +209,7 @@ def create_chat_message(conversation_id: str):
     ai_reply = None
     if role == "user":
         context = conversation_service.get_context(conversation_id, requester_id, limit=8)
-        ai_reply = chat_service.reply(content, context=context)
+        ai_reply = chat_service.reply_with_metadata(content, context=context)["response"]
         conversation_service.add_message(conversation_id, requester_id, "assistant", ai_reply)
 
     return jsonify({"message": message, "assistant_reply": ai_reply})
@@ -236,7 +270,26 @@ def create_video_job():
 
     job["provider_job_id"] = provider_result.get("job_id")
     job["render_url"] = provider_result.get("render_url")
-
+    # Sauvegarde locale de la vidéo si elle est prête
+    _url_to_save = job.get("render_url") or provider_result.get("output_url")
+    if _url_to_save and str(_url_to_save).startswith("http"):
+        import os as _os
+        from werkzeug.utils import secure_filename as _sf
+        _vid_dir = _os.path.join("static", "videos")
+        _os.makedirs(_vid_dir, exist_ok=True)
+        _fname = _sf(_url_to_save.split("/")[-1] or "video.mp4")
+        if not _fname.endswith(".mp4"):
+            _fname = _fname + ".mp4"
+        _local = _os.path.join(_vid_dir, _fname)
+        if not _os.path.exists(_local):
+            try:
+                _vp = VideoProviderFactory.build()
+                _vp.download_video(_url_to_save, _local)
+                job["local_video_url"] = f"/static/videos/{_fname}"
+            except Exception as _e:
+                pass
+        else:
+            job["local_video_url"] = f"/static/videos/{_fname}"
     if provider_result.get("status") == "VIDEO_PROVIDER_NOT_CONFIGURED":
         job_manager.update_status(
             job["id"],
