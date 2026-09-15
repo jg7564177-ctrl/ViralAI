@@ -1,9 +1,51 @@
 import re
 from typing import Dict, List
 
+from services.agnes_chat import AgnesChatClient, AgnesChatError
+
 
 class AIChatService:
+    def __init__(self, client: AgnesChatClient | None = None) -> None:
+        self.client = client or AgnesChatClient()
+
+    def reply_with_metadata(self, message: str, context: list[dict] | None = None) -> dict:
+        text = (message or "").strip()
+        if not text:
+            return {
+                "response": "Peux-tu préciser ce que tu veux créer ?",
+                "provider": "local",
+                "degraded": False,
+            }
+
+        if self.client.configured:
+            try:
+                result = self.client.complete(text, context=context)
+                return {
+                    "response": result.content,
+                    "provider": "agnes",
+                    "model": result.model,
+                    "degraded": False,
+                }
+            except AgnesChatError:
+                # Preserve the existing product behavior while making the
+                # degraded mode explicit to the caller.
+                fallback = self._local_reply(text, context=context)
+                return {
+                    "response": fallback,
+                    "provider": "local_fallback",
+                    "degraded": True,
+                }
+
+        return {
+            "response": self._local_reply(text, context=context),
+            "provider": "local",
+            "degraded": True,
+        }
+
     def reply(self, message: str, context: list[dict] | None = None) -> str:
+        return self.reply_with_metadata(message, context=context)["response"]
+
+    def _local_reply(self, message: str, context: list[dict] | None = None) -> str:
         text = (message or "").strip()
         lowered = text.lower()
 
