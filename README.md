@@ -30,6 +30,9 @@ Créer un fichier `.env` ou configurer les variables côté hébergeur.
 
 ```env
 SECRET_KEY=change-me
+AGNES_API_KEY=
+AGNES_CHAT_MODEL=agnes-chat
+AGNES_CHAT_FALLBACK_MODELS=gpt-4o-mini,claude-3-haiku
 AI_PROVIDER=local
 AI_API_KEY=
 AI_MODEL=
@@ -49,6 +52,9 @@ YOUTUBE_CLIENT_ID=
 
 - `AI_PROVIDER`: fournisseur IA sélectionné (`local` ou `openai`)
 - `AI_API_KEY`: clé externe si un vrai fournisseur IA est activé
+- `AGNES_API_KEY`: secret Replit utilisé uniquement côté serveur pour `/api/chat`
+- `AGNES_CHAT_MODEL`: premier modèle Agnes testé
+- `AGNES_CHAT_FALLBACK_MODELS`: modèles compatibles testés si le premier est refusé
 - `VIDEO_PROVIDER`: doit rester `disabled` tant qu’aucune génération vidéo payante n’est autorisée
 - `ALLOW_PAID_VIDEO`: doit rester `false` par défaut
 - `PAYMENT_PROVIDER`: nom du fournisseur de paiement si activé ultérieurement
@@ -64,7 +70,8 @@ python -m pytest -q
 
 ## IA et vidéo
 
-- Le mode IA local est le fallback sûr.
+- `/api/chat` utilise Agnes AI quand `AGNES_API_KEY` est configurée, puis indique explicitement `local_fallback` si Agnes est indisponible.
+- Le mode IA local reste le fallback sûr et n'est jamais présenté comme une réponse Agnes.
 - Les fournisseurs externes ne sont pas activés tant qu’aucune clé et autorisation n’ont été validées.
 - La génération vidéo payante est désactivée par défaut.
 - Aucun faux résultat vidéo n’est affiché comme réel.
