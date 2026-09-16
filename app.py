@@ -23,6 +23,8 @@ from services.video_analysis import VideoAnalyzer
 from services.video_provider import VideoProviderFactory
 
 app = Flask(__name__)
+
+
 @app.after_request
 def add_header(response):
     if 'service-worker.js' in response.headers.get('Content-Type', '') or 'service-worker.js' in str(getattr(response, 'location', '')):
@@ -85,9 +87,11 @@ button{background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;border:0;pa
 })();
 </script></body></html>"""
 
+
 @app.route("/studio")
 def studio():
     return render_template("studio.html")
+
 
 @app.route("/")
 def home():
@@ -270,31 +274,10 @@ def create_video_job():
 
     job["provider_job_id"] = provider_result.get("job_id")
     job["render_url"] = provider_result.get("render_url")
-    # Sauvegarde locale de la vidéo si elle est prête
-    _url_to_save = job.get("render_url") or provider_result.get("output_url")
-    if _url_to_save and str(_url_to_save).startswith("http"):
-        import os as _os
-        from werkzeug.utils import secure_filename as _sf
-        _vid_dir = _os.path.join("static", "videos")
-        _os.makedirs(_vid_dir, exist_ok=True)
-        _fname = _sf(_url_to_save.split("/")[-1] or "video.mp4")
-        if not _fname.endswith(".mp4"):
-            _fname = _fname + ".mp4"
-        _local = _os.path.join(_vid_dir, _fname)
-        if not _os.path.exists(_local):
-            try:
-                _vp = VideoProviderFactory.build()
-                _vp.download_video(_url_to_save, _local)
-                job["local_video_url"] = f"/static/videos/{_fname}"
-            except Exception as _e:
-                pass
-        else:
-            job["local_video_url"] = f"/static/videos/{_fname}"
+
     if provider_result.get("status") == "VIDEO_PROVIDER_NOT_CONFIGURED":
         job_manager.update_status(
-            job["id"],
-            "FAILED",
-            0,
+            job["id"], "FAILED", 0,
             provider_result["message"],
             error=provider_result["message"],
             output_url=None,
@@ -309,9 +292,7 @@ def create_video_job():
 
     if provider_result.get("status") == "FAILED":
         job_manager.update_status(
-            job["id"],
-            "FAILED",
-            0,
+            job["id"], "FAILED", 0,
             provider_result["message"],
             error=provider_result["message"],
             output_url=None,
@@ -325,9 +306,7 @@ def create_video_job():
         })
 
     job_manager.update_status(
-        job["id"],
-        "QUEUED",
-        10,
+        job["id"], "QUEUED", 10,
         provider_result.get("message", "Job créé."),
         output_url=provider_result.get("render_url"),
     )
@@ -355,29 +334,40 @@ def get_video_job(job_id):
 
     provider_job_id = job.get("provider_job_id")
     if provider_job_id:
-        provider_state = video_provider.get_prediction_status(provider_job_id)
+        # Cache : on n'interroge Agnes que toutes les 20 secondes pour éviter le rate limit
+        now = time.time()
+        last_check = job.get("_last_check", 0)
+        cached = job.get("_cached_state")
+        if cached and (now - last_check) < 20:
+            provider_state = cached
+        else:
+            provider_state = video_provider.get_prediction_status(provider_job_id)
+            job["_last_check"] = now
+            job["_cached_state"] = provider_state
+
         if provider_state["status"] == "COMPLETED":
             job_manager.update_status(
-                job_id,
-                "COMPLETED",
-                100,
+                job_id, "COMPLETED", 100,
                 "Vidéo générée et récupérable.",
                 output_url=provider_state.get("output"),
             )
             job = job_manager.get_job(job_id)
         elif provider_state["status"] == "PROCESSING":
+            real_progress = provider_state.get("progress", 50)
+            try:
+                real_progress = int(real_progress)
+            except (TypeError, ValueError):
+                real_progress = 50
+            if real_progress < 10:
+                real_progress = 10
             job_manager.update_status(
-                job_id,
-                "PROCESSING",
-                50,
+                job_id, "PROCESSING", real_progress,
                 provider_state.get("message", "Génération en cours."),
             )
             job = job_manager.get_job(job_id)
         elif provider_state["status"] == "FAILED":
             job_manager.update_status(
-                job_id,
-                "FAILED",
-                0,
+                job_id, "FAILED", 0,
                 provider_state.get("message", "La génération a échoué."),
                 error=provider_state.get("message", "La génération a échoué."),
             )
@@ -393,17 +383,17 @@ def get_video_job_result(job_id):
         return jsonify({"error": "Job introuvable."}), 404
 
     if job.get("status") != "COMPLETED":
-        return jsonify({"status": job.get("status"), "message": "La vidéo n’est pas encore prête."})
+        return jsonify({"status": job.get("status"), "message": "La vidéo n'est pas encore prête."})
 
     output_url = job.get("output_url")
     if not output_url:
-        return jsonify({"status": "FAILED", "message": "La vidéo n’a pas été récupérée du fournisseur."})
+        return jsonify({"status": "FAILED", "message": "La vidéo n'a pas été récupérée du fournisseur."})
 
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
     target_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{job_id}.mp4")
     stored = video_provider.download_video(output_url, target_path)
     if not stored:
-        return jsonify({"status": "FAILED", "message": "La vidéo a été générée mais n’a pas pu être récupérée."})
+        return jsonify({"status": "FAILED", "message": "La vidéo a été générée mais n'a pas pu être récupérée."})
 
     return jsonify({
         "status": "COMPLETED",
@@ -539,7 +529,7 @@ def chat_video_prompt():
 
     output = {
         "title": idea_result.get("title") or "Concept vidéo",
-        "hook": idea_result.get("hook") or "Hook d’ouverture",
+        "hook": idea_result.get("hook") or "Hook d'ouverture",
         "prompt": idea_result.get("video_prompt") or idea,
         "style": idea_result.get("style_visual") or "cinématique",
         "camera": "tracking shot",
@@ -564,250 +554,4 @@ def create_project_from_chat_message():
     if creative.get("status") == "AI_UNAVAILABLE":
         return jsonify({"status": "AI_UNAVAILABLE", "message": "Assistant IA indisponible — configurez le fournisseur IA côté serveur."})
 
-    project = project_service.create_project(requester_id, {
-        "name": creative.get("title") or "Projet IA",
-        "prompt": idea,
-        "type": "Vidéo",
-        "status": "draft",
-        "progress": 10,
-        "storyboard": creative.get("storyboard") or [],
-        "format": payload.get("format") or "9:16",
-        "duration": int(payload.get("duration") or 15),
-        "style": payload.get("style") or "cinematic",
-        "quality": payload.get("quality") or "Standard",
-    })
-    if conversation_id:
-        conversation_service.attach_project(conversation_id, requester_id, project["id"])
-    return jsonify({"project": project, "creative": creative})
-
-
-@app.route("/api/projects/<project_id>/ai", methods=["POST"])
-def update_project_with_ai(project_id: str):
-    requester_id = get_request_user_id()
-    if not requester_id:
-        return jsonify({"error": "Access denied."}), 403
-
-    project = project_service.get_project(project_id)
-    if project is None:
-        return jsonify({"error": "Access denied."}), 403
-
-    if not account_service.is_admin(requester_id) and project["user_id"] != requester_id:
-        return jsonify({"error": "Access denied."}), 403
-
-    payload = request.get_json(silent=True) or {}
-    try:
-        updated = project_service.update_project(
-            project_id,
-            requester_id,
-            {
-                "name": project.get("name") or "Projet IA",
-                "prompt": payload.get("prompt") or project.get("prompt") or "",
-                "original_idea": payload.get("original_idea") or project.get("prompt") or "",
-                "improved_idea": payload.get("improved_idea") or payload.get("prompt") or project.get("prompt") or "",
-                "storyboard": payload.get("storyboard") or project.get("storyboard") or [],
-                "ai_analysis": payload.get("ai_analysis") or project.get("ai_analysis") or {},
-                "parameters": project.get("parameters", {}) or {},
-                "status": "optimized",
-                "progress": 70,
-            },
-        )
-    except ValueError:
-        return jsonify({"error": "Access denied."}), 403
-
-    return jsonify({"project": updated})
-
-
-@app.route("/api/social-status")
-def social_status():
-    return jsonify(social_oauth.status())
-
-
-@app.route("/api/render-pipeline")
-def render_pipeline_route():
-    mode = request.args.get("mode", "video")
-    return jsonify(render_pipeline.get_pipeline(mode=mode))
-
-
-@app.route("/api/settings")
-def settings_route():
-    return jsonify({
-        "ai_provider": os.getenv("AI_PROVIDER", "openai" if os.getenv("AI_API_KEY") else "not_configured"),
-        "ai_configured": bool(os.getenv("AI_API_KEY")),
-        "video_provider": os.getenv("VIDEO_PROVIDER", "disabled"),
-        "allow_paid_video": Config.ALLOW_PAID_VIDEO,
-        "payment_provider": os.getenv("PAYMENT_PROVIDER", "not_configured"),
-        "video_provider_configured": video_provider.is_configured(),
-        "video_provider_message": "Aucun moteur vidéo n’est actuellement activé. L’API de génération payante est temporairement désactivée.",
-        "requires_env": {
-            "AI_API_KEY": "required for real AI generation",
-            "AI_MODEL": "optional override for model name (default: gpt-4o-mini)",
-            "VIDEO_PROVIDER": "must remain disabled until paid video is explicitly enabled",
-            "ALLOW_PAID_VIDEO": "must remain false until explicit authorization",
-            "PAYMENT_PROVIDER": "required when real payments are activated",
-            "VIDEO_PROVIDER_API_KEY": "required for real video generation",
-            "VIDEO_PROVIDER_BASE_URL": "required for the external video API",
-            "VIDEO_PROVIDER_MODEL": "optional override for model name",
-        },
-    })
-
-
-@app.route("/api/accounts")
-def accounts_route():
-    requester_id = get_request_user_id()
-    if requester_id and account_service.is_admin(requester_id):
-        return jsonify({"accounts": account_service.list_accounts(as_admin=True)})
-    if requester_id:
-        account = account_service.get_account(requester_id)
-        if account is None:
-            return jsonify({"accounts": []})
-        return jsonify({"account": account.to_safe_dict()})
-    return jsonify({"accounts": []})
-
-
-@app.route("/api/admin/packs")
-def admin_packs_route():
-    requester_id = get_request_user_id()
-    if not account_service.is_admin(requester_id):
-        return reject_admin_access()
-    return jsonify({"packs": account_service.list_packs(public_only=False)})
-
-
-@app.route("/api/admin/packs", methods=["POST"])
-def admin_update_pack():
-    requester_id = get_request_user_id()
-    if not account_service.is_admin(requester_id):
-        return reject_admin_access()
-
-    payload = request.get_json(silent=True) or {}
-    pack_id = str(payload.get("id") or payload.get("pack_id") or "").strip()
-    if not pack_id:
-        return jsonify({"error": "Pack id required."}), 400
-
-    pack = account_service.create_or_update_pack(
-        pack_id,
-        name=str(payload.get("name") or pack_id),
-        credits=int(payload.get("credits") or 0),
-        normal_price=float(payload.get("normal_price") or 0),
-        promo_price=float(payload.get("promo_price")) if payload.get("promo_price") is not None else None,
-        active=bool(payload.get("active", True)),
-        discount_percent=int(payload.get("discount_percent") or 0),
-    )
-    return jsonify({"pack": pack})
-
-
-@app.route("/api/payments/packs")
-def payment_packs_route():
-    return jsonify({"packs": account_service.list_packs(public_only=True)})
-
-
-@app.route("/api/payments/checkout", methods=["POST"])
-def payment_checkout():
-    requester_id = get_request_user_id()
-    if not requester_id:
-        return jsonify({"error": "Access denied."}), 403
-
-    payload = request.get_json(silent=True) or {}
-    pack_id = str(payload.get("pack_id") or "").strip()
-    if not pack_id:
-        return jsonify({"error": "Pack manquant."}), 400
-
-    pack = account_service.get_pack(pack_id)
-    if not pack or not pack.get("active"):
-        return jsonify({"status": "PAYMENT_NOT_CONFIGURED", "message": "Paiement bientôt disponible", "credits_added": 0}), 200
-
-    server_price = account_service.get_pack_price(pack_id)
-    if server_price <= 0:
-        return jsonify({"status": "PAYMENT_NOT_CONFIGURED", "message": "Paiement bientôt disponible", "credits_added": 0}), 200
-
-    return jsonify({
-        "status": "PAYMENT_NOT_CONFIGURED",
-        "message": "Paiement bientôt disponible. Connecte un fournisseur de paiement compatible pour activer les achats réels.",
-        "pack_id": pack_id,
-        "price": server_price,
-        "credits": pack.get("credits", 0),
-        "credits_added": 0,
-        "requires_provider": True,
-    })
-
-
-@app.route("/api/accounts/<user_id>")
-def account_route(user_id: str):
-    requester_id = get_request_user_id()
-    if not requester_id:
-        return jsonify({"error": "Access denied."}), 403
-
-    requester = account_service.get_account(requester_id)
-    if requester is None:
-        return jsonify({"error": "Access denied."}), 403
-
-    if requester.is_admin:
-        account = account_service.get_account(user_id)
-        if account is None:
-            return jsonify({"error": "Access denied."}), 403
-        return jsonify({"account": account.to_dict()})
-
-    if requester_id != user_id:
-        return jsonify({"error": "Access denied."}), 403
-
-    account = account_service.get_account(user_id)
-    if account is None:
-        return jsonify({"error": "Access denied."}), 403
-    return jsonify({"account": account.to_safe_dict()})
-
-
-@app.route("/api/admin/summary")
-def admin_summary_route():
-    if not account_service.is_admin(get_request_user_id()):
-        return reject_admin_access()
-    return jsonify(account_service.admin_summary())
-
-
-@app.route("/api/admin/transactions")
-def admin_transactions_route():
-    if not account_service.is_admin(get_request_user_id()):
-        return reject_admin_access()
-    return jsonify({"transactions": account_service.payment_history})
-
-
-@app.route("/api/admin/accounts/<user_id>/credits", methods=["POST"])
-def admin_adjust_credits(user_id: str):
-    if not account_service.is_admin(get_request_user_id()):
-        return reject_admin_access()
-
-    payload = request.get_json(silent=True) or {}
-    amount = int(payload.get("amount") or 0)
-    reason = str(payload.get("reason") or "manual_adjustment")
-    account = account_service.get_account(user_id)
-    if account is None:
-        return jsonify({"error": "Access denied."}), 403
-    account_service.add_credits(user_id, amount, reason=reason)
-    return jsonify({"balance": account_service.get_balance(user_id)})
-
-
-@app.route("/api/admin/accounts/<user_id>/role", methods=["POST"])
-def admin_change_role(user_id: str):
-    if not account_service.is_admin(get_request_user_id()):
-        return reject_admin_access()
-
-    payload = request.get_json(silent=True) or {}
-    role = str(payload.get("role") or "USER").upper()
-    if role not in {"USER", "ADMIN"}:
-        return jsonify({"error": "Access denied."}), 403
-
-    account = account_service.get_account(user_id)
-    if account is None or user_id == "admin":
-        return jsonify({"error": "Access denied."}), 403
-
-    account.role = role
-    account.is_admin = role == "ADMIN"
-    account.metadata = {**account.metadata, "role_changed_via_admin": True}
-    return jsonify({"account": account.to_dict()})
-
-
-@app.route("/health")
-def health_check():
-    return jsonify({"status": "ok", "app": "ViralAI"})
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    p
