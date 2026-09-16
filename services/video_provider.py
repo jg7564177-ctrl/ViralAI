@@ -19,7 +19,7 @@ class BaseVideoProvider:
     def submit_generation(self, prompt: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "status": "VIDEO_PROVIDER_NOT_CONFIGURED",
-            "message": "Aucun moteur vidéo n’est configuré pour le moment. Ajoutez une clé et activez un fournisseur vidéo plus tard.",
+            "message": "Aucun moteur vidéo n'est configuré pour le moment.",
             "job_id": None,
             "render_url": None,
         }
@@ -27,11 +27,11 @@ class BaseVideoProvider:
     def get_prediction_status(self, prediction_id: str) -> Dict[str, Any]:
         return {
             "status": "VIDEO_PROVIDER_NOT_CONFIGURED",
-            "message": "Le fournisseur vidéo n’est pas activé.",
+            "message": "Le fournisseur vidéo n'est pas activé.",
             "output": None,
         }
 
-    def download_video(self, video_url: str, destination: str) -> str | None:
+    def download_video(self, video_url: str, destination: str):
         return None
 
 
@@ -44,7 +44,7 @@ class DisabledVideoProvider(BaseVideoProvider):
     def submit_generation(self, prompt: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "status": "VIDEO_PROVIDER_NOT_CONFIGURED",
-            "message": "VIDEO_PROVIDER_NOT_CONFIGURED: aucun moteur vidéo n’est activé pour le moment. L’API payante est temporairement désactivée.",
+            "message": "VIDEO_PROVIDER_NOT_CONFIGURED: aucun moteur vidéo n'est activé.",
             "job_id": None,
             "render_url": None,
         }
@@ -65,21 +65,16 @@ class ReplicateVideoProvider(BaseVideoProvider):
             value = int(duration or 10)
         except (TypeError, ValueError):
             value = 10
-        if value < 5:
-            return 5
-        if value > 10:
-            return 10
-        return value
+        return max(5, min(10, value))
 
     def submit_generation(self, prompt: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         if not self.is_configured():
             return {
                 "status": "VIDEO_PROVIDER_NOT_CONFIGURED",
-                "message": "VIDEO_PROVIDER_NOT_CONFIGURED: configure VIDEO_PROVIDER_API_KEY et VIDEO_PROVIDER_MODEL pour appeler un fournisseur vidéo réel.",
+                "message": "VIDEO_PROVIDER_NOT_CONFIGURED: configure VIDEO_PROVIDER_API_KEY.",
                 "job_id": None,
                 "render_url": None,
             }
-
         try:
             response = requests.post(
                 f"{self.base_url}/models/{self.model}/predictions",
@@ -102,20 +97,17 @@ class ReplicateVideoProvider(BaseVideoProvider):
                 body = response.json() if response.content else {}
                 message = body.get("error") or body.get("detail") or response.text
                 return {"status": "FAILED", "message": f"Erreur fournisseur vidéo: {message}", "job_id": None, "render_url": None}
-
             prediction = response.json()
             job_id = prediction.get("id")
             if not job_id:
-                return {"status": "FAILED", "message": "Erreur fournisseur vidéo: la réponse ne contient pas d'identifiant de génération.", "job_id": None, "render_url": None}
-
-            return {"status": "QUEUED", "message": "La génération vidéo a été soumise au fournisseur officiel Replicate.", "job_id": job_id, "render_url": None}
+                return {"status": "FAILED", "message": "Pas d'identifiant de génération.", "job_id": None, "render_url": None}
+            return {"status": "QUEUED", "message": "Soumis à Replicate.", "job_id": job_id, "render_url": None}
         except requests.RequestException as exc:
-            return {"status": "FAILED", "message": f"Erreur fournisseur vidéo: {exc}", "job_id": None, "render_url": None}
+            return {"status": "FAILED", "message": f"Erreur: {exc}", "job_id": None, "render_url": None}
 
     def get_prediction_status(self, prediction_id: str) -> Dict[str, Any]:
         if not self.is_configured():
-            return {"status": "VIDEO_PROVIDER_NOT_CONFIGURED", "message": "VIDEO_PROVIDER_NOT_CONFIGURED: configure VIDEO_PROVIDER_API_KEY pour suivre le job.", "output": None}
-
+            return {"status": "VIDEO_PROVIDER_NOT_CONFIGURED", "message": "Non configuré.", "output": None}
         try:
             response = requests.get(
                 f"{self.base_url}/predictions/{prediction_id}",
@@ -123,60 +115,32 @@ class ReplicateVideoProvider(BaseVideoProvider):
                 timeout=self.timeout,
             )
             if response.status_code >= 400:
-                body = response.json() if response.content else {}
-                message = body.get("error") or body.get("detail") or response.text
-                return {"status": "FAILED", "message": f"Erreur fournisseur vidéo: {message}", "output": None}
-
+                return {"status": "FAILED", "message": "Erreur Replicate.", "output": None}
             prediction = response.json()
             status = (prediction.get("status") or "unknown").upper()
             output = prediction.get("output")
-            render_url = None
-            if isinstance(output, list) and output:
-                render_url = output[0]
-            elif isinstance(output, str):
-                render_url = output
-
+            render_url = output[0] if isinstance(output, list) and output else (output if isinstance(output, str) else None)
             if status in {"SUCCEEDED", "COMPLETED"}:
-                return {"status": "COMPLETED", "message": "Vidéo générée et prête à être récupérée.", "output": render_url}
+                return {"status": "COMPLETED", "message": "Vidéo prête.", "output": render_url}
             if status in {"FAILED", "CANCELED", "CANCELLED"}:
-                error = prediction.get("error") or prediction.get("detail") or "La génération a échoué sans message détaillé."
-                return {"status": "FAILED", "message": f"La génération a échoué: {error}", "output": None}
-            if status in {"QUEUED", "PROCESSING", "STARTING"}:
-                return {"status": "PROCESSING", "message": "Génération en cours sur le fournisseur vidéo.", "output": None}
-            return {"status": "PROCESSING", "message": "Statut non finalisé pour le moment.", "output": None}
+                return {"status": "FAILED", "message": "Échec Replicate.", "output": None}
+            return {"status": "PROCESSING", "message": "En cours.", "output": None}
         except requests.RequestException as exc:
-            return {"status": "FAILED", "message": f"Erreur fournisseur vidéo: {exc}", "output": None}
+            return {"status": "FAILED", "message": f"Erreur: {exc}", "output": None}
 
-    def download_video(self, video_url: str, destination: str) -> str | None:
+    def download_video(self, video_url: str, destination: str):
         if not video_url:
             return None
         try:
             response = requests.get(video_url, timeout=self.timeout, stream=True)
             response.raise_for_status()
-            with open(destination, "wb") as file_handle:
+            with open(destination, "wb") as fh:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
-                        file_handle.write(chunk)
+                        fh.write(chunk)
             return destination
         except requests.RequestException:
             return None
-
-
-class VideoProviderFactory:
-    @staticmethod
-    def build() -> BaseVideoProvider:
-        provider_flag = os.getenv("VIDEO_PROVIDER_ENABLED", "false").strip().lower()
-        api_key = os.getenv("VIDEO_PROVIDER_API_KEY") or os.getenv("AGNES_API_KEY")
-        if provider_flag not in {"1", "true", "yes", "on"} or not api_key:
-            return DisabledVideoProvider()
-        provider_name = os.getenv("VIDEO_PROVIDER", "replicate").strip().lower()
-        if provider_name == "agnes":
-            return AgnesVideoProvider()
-        return ReplicateVideoProvider()
-
-
-class VideoProvider(DisabledVideoProvider):
-    pass
 
 
 class AgnesVideoProvider(BaseVideoProvider):
@@ -242,7 +206,7 @@ class AgnesVideoProvider(BaseVideoProvider):
             data = response.json()
             job_id = data.get("id") or data.get("task_id")
             if not job_id:
-                return {"status": "FAILED", "message": "Erreur fournisseur vidéo: identifiant de génération manquant.", "job_id": None, "render_url": None}
+                return {"status": "FAILED", "message": "Identifiant de génération manquant.", "job_id": None, "render_url": None}
             return {
                 "status": "QUEUED",
                 "message": "La génération vidéo a été soumise au fournisseur Agnes AI.",
@@ -253,6 +217,7 @@ class AgnesVideoProvider(BaseVideoProvider):
             return {"status": "FAILED", "message": f"Erreur fournisseur vidéo: {exc}", "job_id": None, "render_url": None}
 
     def get_prediction_status(self, prediction_id: str):
+        """Récupère le statut réel d'Agnes avec le progress."""
         if not self.is_configured():
             return {
                 "status": "VIDEO_PROVIDER_NOT_CONFIGURED",
@@ -263,23 +228,54 @@ class AgnesVideoProvider(BaseVideoProvider):
             response = requests.get(
                 f"{self.API_BASE}/{prediction_id}",
                 headers={"Authorization": f"Bearer {self.api_key}"},
-                timeout=self.timeout,
+                timeout=15,
             )
             if response.status_code >= 400:
-                return {"status": "FAILED", "message": "La génération a échoué: tâche introuvable.", "output": None}
+                return {
+                    "status": "PROCESSING",
+                    "message": f"Agnes HTTP {response.status_code} (nouvelle tentative dans 5s)",
+                    "output": None,
+                    "progress": 50,
+                }
             data = response.json()
             status = str(data.get("status") or "").lower()
+
+            raw_progress = data.get("progress")
+            try:
+                progress = int(raw_progress) if raw_progress is not None else 50
+            except (TypeError, ValueError):
+                progress = 50
+            if progress < 10:
+                progress = 10
+
             if status in {"queued", "processing", "starting"}:
-                return {"status": "PROCESSING", "message": "Génération en cours sur le fournisseur vidéo.", "output": None}
+                return {
+                    "status": "PROCESSING",
+                    "message": f"Génération en cours chez Agnes AI ({progress}%).",
+                    "output": None,
+                    "progress": progress,
+                }
             if status in {"completed", "succeeded", "success"}:
                 output_url = data.get("url") or data.get("video_url") or data.get("output")
-                return {"status": "COMPLETED", "message": "Génération terminée.", "output": output_url}
+                if not output_url:
+                    return {"status": "FAILED", "message": "Statut completed mais aucune URL vidéo.", "output": None}
+                return {"status": "COMPLETED", "message": "Génération terminée.", "output": output_url, "progress": 100}
             if status in {"failed", "error", "cancelled"}:
                 err = data.get("error") or "Génération échouée"
                 return {"status": "FAILED", "message": f"La génération a échoué: {err}", "output": None}
-            return {"status": "PROCESSING", "message": "Statut non finalisé pour le moment.", "output": None}
+            return {
+                "status": "PROCESSING",
+                "message": f"Statut non finalisé ({status}).",
+                "output": None,
+                "progress": progress,
+            }
         except requests.RequestException as exc:
-            return {"status": "FAILED", "message": f"Erreur fournisseur vidéo: {exc}", "output": None}
+            return {
+                "status": "PROCESSING",
+                "message": f"Erreur réseau ({exc}) - nouvelle tentative",
+                "output": None,
+                "progress": 50,
+            }
 
     def download_video(self, video_url: str, destination: str):
         if not video_url:
@@ -294,3 +290,20 @@ class AgnesVideoProvider(BaseVideoProvider):
             return destination
         except requests.RequestException:
             return None
+
+
+class VideoProviderFactory:
+    @staticmethod
+    def build() -> BaseVideoProvider:
+        provider_flag = os.getenv("VIDEO_PROVIDER_ENABLED", "false").strip().lower()
+        api_key = os.getenv("VIDEO_PROVIDER_API_KEY") or os.getenv("AGNES_API_KEY")
+        if provider_flag not in {"1", "true", "yes", "on"} or not api_key:
+            return DisabledVideoProvider()
+        provider_name = os.getenv("VIDEO_PROVIDER", "replicate").strip().lower()
+        if provider_name == "agnes":
+            return AgnesVideoProvider()
+        return ReplicateVideoProvider()
+
+
+class VideoProvider(DisabledVideoProvider):
+    pass
